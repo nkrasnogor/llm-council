@@ -1,21 +1,42 @@
 """3-stage LLM Council orchestration."""
 
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple, Optional
 from .openrouter import query_models_parallel, query_model
 from .config import COUNCIL_MODELS, CHAIRMAN_MODEL
 
 
-async def stage1_collect_responses(user_query: str) -> List[Dict[str, Any]]:
+async def stage1_collect_responses(user_query: str, attachments: Optional[List[Dict[str, Any]]] = None) -> List[Dict[str, Any]]:
     """
     Stage 1: Collect individual responses from all council models.
 
     Args:
         user_query: The user's question
+        attachments: Optional list of attachments
 
     Returns:
         List of dicts with 'model' and 'response' keys
     """
-    messages = [{"role": "user", "content": user_query}]
+    attachments = attachments or []
+
+    # Build multimodal content: text + attachment parts
+    content_parts: List[Dict[str, Any]] = [
+        {"type": "text", "text": user_query}
+    ]
+
+    for attachment in attachments:
+        data_url = None
+        if isinstance(attachment, dict):
+            data_url = attachment.get("data_url")
+        elif hasattr(attachment, "data_url"):
+            data_url = getattr(attachment, "data_url")
+        if not data_url:
+            continue
+        content_parts.append({
+            "type": "file",
+            "file": {"uri": data_url}
+        })
+
+    messages = [{"role": "user", "content": content_parts}]
 
     # Query all models in parallel
     responses = await query_models_parallel(COUNCIL_MODELS, messages)
@@ -293,18 +314,19 @@ Title:"""
     return title
 
 
-async def run_full_council(user_query: str) -> Tuple[List, List, Dict, Dict]:
+async def run_full_council(user_query: str, attachments: Optional[List[Dict[str, Any]]] = None) -> Tuple[List, List, Dict, Dict]:
     """
     Run the complete 3-stage council process.
 
     Args:
         user_query: The user's question
+        attachments: Optional list of attachments
 
     Returns:
         Tuple of (stage1_results, stage2_results, stage3_result, metadata)
     """
     # Stage 1: Collect individual responses
-    stage1_results = await stage1_collect_responses(user_query)
+    stage1_results = await stage1_collect_responses(user_query, attachments or [])
 
     # If no models responded successfully, return error
     if not stage1_results:

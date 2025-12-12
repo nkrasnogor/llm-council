@@ -3,6 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import Stage1 from './Stage1';
 import Stage2 from './Stage2';
 import Stage3 from './Stage3';
+import FileUploader from './FileUploader';
 import './ChatInterface.css';
 
 export default function ChatInterface({
@@ -11,6 +12,7 @@ export default function ChatInterface({
   isLoading,
 }) {
   const [input, setInput] = useState('');
+  const [attachments, setAttachments] = useState([]);
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = () => {
@@ -24,8 +26,9 @@ export default function ChatInterface({
   const handleSubmit = (e) => {
     e.preventDefault();
     if (input.trim() && !isLoading) {
-      onSendMessage(input);
+      onSendMessage(input, attachments);
       setInput('');
+      setAttachments([]);
     }
   };
 
@@ -35,6 +38,25 @@ export default function ChatInterface({
       e.preventDefault();
       handleSubmit(e);
     }
+  };
+
+  const renderAttachments = (files) => {
+    if (!files || files.length === 0) return null;
+    return (
+      <div className="attachments-list">
+        {files.map((file, idx) => (
+          <a
+            key={idx}
+            href={file.data_url}
+            target="_blank"
+            rel="noreferrer"
+            className="attachment-chip"
+          >
+            {file.filename}
+          </a>
+        ))}
+      </div>
+    );
   };
 
   if (!conversation) {
@@ -66,6 +88,7 @@ export default function ChatInterface({
                     <div className="markdown-content">
                       <ReactMarkdown>{msg.content}</ReactMarkdown>
                     </div>
+                    {renderAttachments(msg.attachments)}
                   </div>
                 </div>
               ) : (
@@ -131,6 +154,8 @@ export default function ChatInterface({
             disabled={isLoading}
             rows={3}
           />
+          <FileUploader onChange={setAttachments} />
+          {renderAttachments(attachments)}
           <button
             type="submit"
             className="send-button"

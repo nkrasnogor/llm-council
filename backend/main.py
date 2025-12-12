@@ -3,8 +3,8 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
-from typing import List, Dict, Any
+from pydantic import BaseModel, Field, field_validator
+from typing import List, Dict, Any, Optional
 import uuid
 import json
 import asyncio
@@ -32,6 +32,36 @@ class CreateConversationRequest(BaseModel):
 class SendMessageRequest(BaseModel):
     """Request to send a message in a conversation."""
     content: str
+    attachments: Optional[List["Attachment"]] = Field(default_factory=list)
+
+    @field_validator("attachments", mode="before")
+    @classmethod
+    def validate_attachments(cls, value):
+        if value is None:
+            return []
+        if not isinstance(value, list):
+            raise ValueError("attachments must be a list")
+        for att in value:
+            if not isinstance(att, dict):
+                continue
+        return value
+
+
+class Attachment(BaseModel):
+    """Attachment metadata and content."""
+    filename: str
+    mime_type: str
+    data_url: str
+
+    @field_validator("data_url")
+    @classmethod
+    def validate_data_url(cls, v: str):
+        if not v.startswith("data:"):
+            raise ValueError("data_url must start with 'data:'")
+        return v
+
+
+SendMessageRequest.model_rebuild()
 
 
 class ConversationMetadata(BaseModel):
@@ -94,7 +124,7 @@ async def send_message(conversation_id: str, request: SendMessageRequest):
     is_first_message = len(conversation["messages"]) == 0
 
     # Add user message
-    storage.add_user_message(conversation_id, request.content)
+    storage.add_user_message(conversation_id, request.content, request.attachments or [])
 
     # If this is the first message, generate a title
     if is_first_message:
@@ -103,7 +133,8 @@ async def send_message(conversation_id: str, request: SendMessageRequest):
 
     # Run the 3-stage council process
     stage1_results, stage2_results, stage3_result, metadata = await run_full_council(
-        request.content
+        request.content,
+        request.attachments or []
     )
 
     # Add assistant message with all stages
@@ -140,7 +171,7 @@ async def send_message_stream(conversation_id: str, request: SendMessageRequest)
     async def event_generator():
         try:
             # Add user message
-            storage.add_user_message(conversation_id, request.content)
+            storage.add_user_message(conversation_id, request.content, request.attachments or [])
 
             # Start title generation in parallel (don't await yet)
             title_task = None
@@ -149,7 +180,7 @@ async def send_message_stream(conversation_id: str, request: SendMessageRequest)
 
             # Stage 1: Collect responses
             yield f"data: {json.dumps({'type': 'stage1_start'})}\n\n"
-            stage1_results = await stage1_collect_responses(request.content)
+            stage1_results = await stage1_collect_responses(request.content, request.attachments or [])
             yield f"data: {json.dumps({'type': 'stage1_complete', 'data': stage1_results})}\n\n"
 
             # Stage 2: Collect rankings

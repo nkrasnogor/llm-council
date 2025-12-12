@@ -161,3 +161,21 @@
   background: #ccc;
   border-color: #ccc;
 }
+
+.attachments-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.attachment-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 12px;
+  background: #eef1f6;
+  color: #1a1a1a;
+  font-size: 12px;
+  text-decoration: none;
+}
