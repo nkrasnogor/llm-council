@@ -29,7 +29,7 @@ Within frontend/ check which version of node you are using:  ```node -v``` it sh
 If you dont have the correct version do:
 ```nvm install 18``` or ```nvm install 20```
 then:
-```nvm use 18``` or ```nvm use 20``
+```nvm use 18``` or ```nvm use 20```
 
 Then:
 
