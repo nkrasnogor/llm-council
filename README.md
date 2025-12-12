@@ -25,6 +25,14 @@ The project uses [uv](https://docs.astral.sh/uv/) for project management.
 uv sync
 ```
 
+Within frontend/ check which version of node you are using:  ```node -v``` it should be >18.
+If you dont have the correct version do:
+```nvm install 18``` or ```nvm install 20```
+then:
+```nvm use 18``` or ```nvm use 20``
+
+Then:
+
 **Frontend:**
 ```bash
 cd frontend

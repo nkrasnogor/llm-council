@@ -196,4 +196,10 @@ async def send_message_stream(conversation_id: str, request: SendMessageRequest)
 
 if __name__ == "__main__":
     import uvicorn
+    from .config import OPENROUTER_API_KEY
+    
+    # Validate API key before starting server
+    if not OPENROUTER_API_KEY:
+        raise ValueError("OPENROUTER_API_KEY environment variable is not set or is empty. Please configure it before starting the server.")
+    
     uvicorn.run(app, host="0.0.0.0", port=8001)
