@@ -287,7 +287,9 @@ async def generate_conversation_title(user_query: str) -> str:
         A short title (3-5 words)
     """
     title_prompt = f"""Generate a very short title (3-5 words maximum) that summarizes the following question.
-The title should be concise and descriptive. Do not use quotes or punctuation in the title.
+Refrain from generating multiple options for the tile but instead provide a single clear title.
+The title should be concise and descriptive. Do not use quotes or punctuation in the title. 
+
 
 Question: {user_query}
 
