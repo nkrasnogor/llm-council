@@ -39,7 +39,22 @@ async def query_model(
                 headers=headers,
                 json=payload
             )
-            response.raise_for_status()
+
+            # Provide richer error diagnostics for failed requests
+            try:
+                response.raise_for_status()
+            except httpx.HTTPStatusError as hs_err:
+                # Print status code, response body and the outgoing payload to help debugging
+                try:
+                    body = response.text
+                except Exception:
+                    body = '<unavailable>'
+
+                print(f"HTTP error querying model {model}: {hs_err}")
+                print(f"Status: {response.status_code}")
+                print(f"Response body: {body}")
+                print(f"Request payload: {payload}")
+                return None
 
             data = response.json()
             message = data['choices'][0]['message']

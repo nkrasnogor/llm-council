@@ -25,15 +25,47 @@ async def stage1_collect_responses(user_query: str, attachments: Optional[List[D
 
     for attachment in attachments:
         data_url = None
+        filename = None
+        mime_type = None
         if isinstance(attachment, dict):
             data_url = attachment.get("data_url")
+            filename = attachment.get("filename")
+            mime_type = attachment.get("mime_type")
         elif hasattr(attachment, "data_url"):
-            data_url = getattr(attachment, "data_url")
+            data_url = getattr(attachment, "data_url", None)
+            filename = getattr(attachment, "filename", None)
+            mime_type = getattr(attachment, "mime_type", None)
+
         if not data_url:
             continue
+
+        # Images: send using image_url
+        if mime_type and mime_type.startswith("image/"):
+            content_parts.append({
+                "type": "image_url",
+                "image_url": {"url": data_url}
+            })
+            continue
+
+        # Documents/other files: OpenRouter supports text and image content parts.
+        # For non-image files (PDFs, docs), include a textual attachment marker
+        # that references the file (URL or data URL). This avoids sending an
+        # unsupported `file` content part which can trigger a 400 response.
+        file_type = None
+        if mime_type == "application/pdf":
+            file_type = "pdf"
+        elif mime_type and "/" in mime_type:
+            file_type = mime_type.split("/")[1]
+
+        # Build a safe text representation for non-image attachments.
+        attachment_desc = f"[Attachment: {filename or 'file'} ({mime_type or 'unknown'})]"
+        if data_url:
+            # Append the URL or data URL so the model can fetch or inspect it
+            attachment_desc += f" {data_url}"
+
         content_parts.append({
-            "type": "file",
-            "file": {"uri": data_url}
+            "type": "text",
+            "text": attachment_desc
         })
 
     messages = [{"role": "user", "content": content_parts}]
