@@ -107,21 +107,30 @@ def list_conversations() -> List[Dict[str, Any]]:
     return conversations
 
 
-def add_user_message(conversation_id: str, content: str):
+def add_user_message(conversation_id: str, content: str, attachments: List[Dict[str, Any]]):
     """
     Add a user message to a conversation.
 
     Args:
         conversation_id: Conversation identifier
         content: User message content
+        attachments: List of attachments
     """
     conversation = get_conversation(conversation_id)
     if conversation is None:
         raise ValueError(f"Conversation {conversation_id} not found")
 
+    normalized_attachments = []
+    for att in attachments or []:
+        if isinstance(att, dict):
+            normalized_attachments.append(att)
+        elif hasattr(att, "model_dump"):
+            normalized_attachments.append(att.model_dump())
+
     conversation["messages"].append({
         "role": "user",
-        "content": content
+        "content": content,
+        "attachments": normalized_attachments
     })
 
     save_conversation(conversation)

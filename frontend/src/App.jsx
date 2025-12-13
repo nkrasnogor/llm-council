@@ -57,13 +57,13 @@ function App() {
     setCurrentConversationId(id);
   };
 
-  const handleSendMessage = async (content) => {
+  const handleSendMessage = async (content, attachments = []) => {
     if (!currentConversationId) return;
 
     setIsLoading(true);
     try {
       // Optimistically add user message to UI
-      const userMessage = { role: 'user', content };
+      const userMessage = { role: 'user', content, attachments };
       setCurrentConversation((prev) => ({
         ...prev,
         messages: [...prev.messages, userMessage],
@@ -169,7 +169,7 @@ function App() {
           default:
             console.log('Unknown event type:', eventType);
         }
-      });
+      }, attachments);
     } catch (error) {
       console.error('Failed to send message:', error);
       // Remove optimistic messages on error

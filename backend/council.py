@@ -1,21 +1,74 @@
 """3-stage LLM Council orchestration."""
 
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple, Optional
 from .openrouter import query_models_parallel, query_model
 from .config import COUNCIL_MODELS, CHAIRMAN_MODEL
 
 
-async def stage1_collect_responses(user_query: str) -> List[Dict[str, Any]]:
+async def stage1_collect_responses(user_query: str, attachments: Optional[List[Dict[str, Any]]] = None) -> List[Dict[str, Any]]:
     """
     Stage 1: Collect individual responses from all council models.
 
     Args:
         user_query: The user's question
+        attachments: Optional list of attachments
 
     Returns:
         List of dicts with 'model' and 'response' keys
     """
-    messages = [{"role": "user", "content": user_query}]
+    attachments = attachments or []
+
+    # Build multimodal content: text + attachment parts
+    content_parts: List[Dict[str, Any]] = [
+        {"type": "text", "text": user_query}
+    ]
+
+    for attachment in attachments:
+        data_url = None
+        filename = None
+        mime_type = None
+        if isinstance(attachment, dict):
+            data_url = attachment.get("data_url")
+            filename = attachment.get("filename")
+            mime_type = attachment.get("mime_type")
+        elif hasattr(attachment, "data_url"):
+            data_url = getattr(attachment, "data_url", None)
+            filename = getattr(attachment, "filename", None)
+            mime_type = getattr(attachment, "mime_type", None)
+
+        if not data_url:
+            continue
+
+        # Images: send using image_url
+        if mime_type and mime_type.startswith("image/"):
+            content_parts.append({
+                "type": "image_url",
+                "image_url": {"url": data_url}
+            })
+            continue
+
+        # Documents/other files: OpenRouter supports text and image content parts.
+        # For non-image files (PDFs, docs), include a textual attachment marker
+        # that references the file (URL or data URL). This avoids sending an
+        # unsupported `file` content part which can trigger a 400 response.
+        file_type = None
+        if mime_type == "application/pdf":
+            file_type = "pdf"
+        elif mime_type and "/" in mime_type:
+            file_type = mime_type.split("/")[1]
+
+        # Build a safe text representation for non-image attachments.
+        attachment_desc = f"[Attachment: {filename or 'file'} ({mime_type or 'unknown'})]"
+        if data_url:
+            # Append the URL or data URL so the model can fetch or inspect it
+            attachment_desc += f" {data_url}"
+
+        content_parts.append({
+            "type": "text",
+            "text": attachment_desc
+        })
+
+    messages = [{"role": "user", "content": content_parts}]
 
     # Query all models in parallel
     responses = await query_models_parallel(COUNCIL_MODELS, messages)
@@ -266,7 +319,9 @@ async def generate_conversation_title(user_query: str) -> str:
         A short title (3-5 words)
     """
     title_prompt = f"""Generate a very short title (3-5 words maximum) that summarizes the following question.
-The title should be concise and descriptive. Do not use quotes or punctuation in the title.
+Refrain from generating multiple options for the tile but instead provide a single clear title.
+The title should be concise and descriptive. Do not use quotes or punctuation in the title. 
+
 
 Question: {user_query}
 
@@ -293,18 +348,19 @@ Title:"""
     return title
 
 
-async def run_full_council(user_query: str) -> Tuple[List, List, Dict, Dict]:
+async def run_full_council(user_query: str, attachments: Optional[List[Dict[str, Any]]] = None) -> Tuple[List, List, Dict, Dict]:
     """
     Run the complete 3-stage council process.
 
     Args:
         user_query: The user's question
+        attachments: Optional list of attachments
 
     Returns:
         Tuple of (stage1_results, stage2_results, stage3_result, metadata)
     """
     # Stage 1: Collect individual responses
-    stage1_results = await stage1_collect_responses(user_query)
+    stage1_results = await stage1_collect_responses(user_query, attachments or [])
 
     # If no models responded successfully, return error
     if not stage1_results:

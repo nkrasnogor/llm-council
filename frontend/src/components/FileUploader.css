@@ -1,0 +1,30 @@
+.file-uploader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.file-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px dashed #888;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  background: #f7f7f7;
+}
+
+.file-label input {
+  display: none;
+}
+
+.clear-files {
+  border: none;
+  background: transparent;
+  color: #b00;
+  cursor: pointer;
+  font-size: 14px;
+}
