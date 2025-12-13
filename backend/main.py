@@ -9,6 +9,7 @@ import uuid
 import json
 import asyncio
 import sys
+import argparse
 
 # Import config and perform CLI-based selection/validation BEFORE importing
 # modules that depend on `COUNCIL_MODELS` / `CHAIRMAN_MODEL`.
@@ -22,118 +23,63 @@ except Exception:
 
 # CLI args usage: `python -m backend.main [0|1] [optional_chairman_model]`
 # 0 -> free council, 1 -> premium council. Default: premium.
-def _apply_cli_args_to_config(argv: list):
-    # Select council mode
-    try:
-        if len(argv) >= 2:
-            val = argv[1]
-            if val == "0":
-                config.COUNCIL_MODELS = config.FREE_COUNCIL_MODELS
-            elif val == "1":
-                config.COUNCIL_MODELS = config.PREMIUM_COUNCIL_MODELS
-    except Exception:
-        # keep defaults
-        pass
+# Parse CLI flags (only flags are accepted)
+parser = argparse.ArgumentParser(add_help=False)
+parser.add_argument("--council", choices=["free", "premium"], help="Select council type (free or premium).")
+parser.add_argument("--chairman", type=str, help="Optional chairman model identifier to override default (validated when possible).")
+# Parse known args only to avoid interfering with uv/other tooling
+args, _ = parser.parse_known_args(sys.argv[1:])
 
-    # Optional chairman override (validate against OpenRouter /models)
-    try:
-        if len(argv) >= 3:
-            candidate = argv[2]
-            if candidate:
-                # If httpx and API key available, validate
-                if httpx is not None and config.OPENROUTER_API_KEY:
-                    models_url = "https://openrouter.ai/api/v1/models"
-                    headers = {"Authorization": f"Bearer {config.OPENROUTER_API_KEY}"}
-                    try:
-                        resp = httpx.get(models_url, headers=headers, timeout=10.0)
-                        resp.raise_for_status()
-                        data = resp.json()
-                        models_list = []
-                        if isinstance(data, list):
-                            models_list = data
-                        elif isinstance(data, dict) and "data" in data and isinstance(data["data"], list):
-                            models_list = data["data"]
+# Apply council selection strictly from flags
+try:
+    if args.council == "free":
+        config.COUNCIL_MODELS = config.FREE_COUNCIL_MODELS
+    elif args.council == "premium":
+        config.COUNCIL_MODELS = config.PREMIUM_COUNCIL_MODELS
+except Exception:
+    pass
 
-                        found = False
-                        for m in models_list:
-                            if not isinstance(m, dict):
-                                continue
-                            for key in ("id", "model", "name"):
-                                if key in m and m[key] == candidate:
-                                    found = True
-                                    break
-                            if found:
-                                break
+# If free council selected, enforce free chairman
+if args.council == "free":
+    config.CHAIRMAN_MODEL = "tngtech/deepseek-r1t2-chimera:free"
+else:
+    # Optional chairman override with validation when possible (only for premium)
+    if getattr(args, "chairman", None):
+        candidate = args.chairman
+        if httpx is not None and config.OPENROUTER_API_KEY:
+            try:
+                models_url = "https://openrouter.ai/api/v1/models"
+                headers = {"Authorization": f"Bearer {config.OPENROUTER_API_KEY}"}
+                resp = httpx.get(models_url, headers=headers, timeout=10.0)
+                resp.raise_for_status()
+                data = resp.json()
+                models_list = []
+                if isinstance(data, list):
+                    models_list = data
+                elif isinstance(data, dict) and "data" in data and isinstance(data["data"], list):
+                    models_list = data["data"]
 
-                        if found:
-                            config.CHAIRMAN_MODEL = candidate
-                        else:
-                            # leave default
-                            pass
-                    except Exception:
-                        # On any error keep default
-                        pass
-                else:
-                    # No httpx or API key: trust the provided candidate
-                    config.CHAIRMAN_MODEL = candidate
-    except Exception:
-        pass
-        # Parse CLI flags for nicer UX
-        parser = argparse.ArgumentParser(add_help=False)
-        parser.add_argument("--council", choices=["free", "premium"], help="Select council type (free or premium).")
-        parser.add_argument("--chairman", type=str, help="Optional chairman model identifier to override default.")
-        # Parse known args only to avoid interfering with uv/other tooling
-        args, _ = parser.parse_known_args(argv[1:])
-
-        # Apply council selection
-        try:
-            if args.council == "free":
-                config.COUNCIL_MODELS = config.FREE_COUNCIL_MODELS
-            elif args.council == "premium":
-                config.COUNCIL_MODELS = config.PREMIUM_COUNCIL_MODELS
-        except Exception:
-            pass
-
-        # Apply optional chairman override with validation when possible
-        if getattr(args, "chairman", None):
-            candidate = args.chairman
-            if httpx is not None and config.OPENROUTER_API_KEY:
-                try:
-                    models_url = "https://openrouter.ai/api/v1/models"
-                    headers = {"Authorization": f"Bearer {config.OPENROUTER_API_KEY}"}
-                    resp = httpx.get(models_url, headers=headers, timeout=10.0)
-                    resp.raise_for_status()
-                    data = resp.json()
-                    models_list = []
-                    if isinstance(data, list):
-                        models_list = data
-                    elif isinstance(data, dict) and "data" in data and isinstance(data["data"], list):
-                        models_list = data["data"]
-
-                    found = False
-                    for m in models_list:
-                        if not isinstance(m, dict):
-                            continue
-                        for key in ("id", "model", "name"):
-                            if key in m and m[key] == candidate:
-                                found = True
-                                break
-                        if found:
+                found = False
+                for m in models_list:
+                    if not isinstance(m, dict):
+                        continue
+                    for key in ("id", "model", "name"):
+                        if key in m and m[key] == candidate:
+                            found = True
                             break
-
                     if found:
-                        config.CHAIRMAN_MODEL = candidate
-                    else:
-                        print(f"Warning: chairman model '{candidate}' not found on OpenRouter; using default {config.CHAIRMAN_MODEL}")
-                except Exception:
-                    print("Warning: could not validate chairman model due to network/error; using default or provided value.")
-            else:
-                # No httpx or API key -> trust provided candidate
-                config.CHAIRMAN_MODEL = candidate
+                        break
 
+                if found:
+                    config.CHAIRMAN_MODEL = candidate
+                else:
+                    print(f"Warning: chairman model '{candidate}' not found on OpenRouter; using default {config.CHAIRMAN_MODEL}")
+            except Exception:
+                print("Warning: could not validate chairman model due to network/error; using default or provided value.")
+        else:
+            # No httpx or API key -> trust provided candidate
+            config.CHAIRMAN_MODEL = candidate
 
-# Apply CLI args immediately
-_apply_cli_args_to_config(sys.argv)
 
 # Import modules that depend on config after config is set
 from . import storage
