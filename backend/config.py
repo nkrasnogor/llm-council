@@ -14,15 +14,13 @@ PREMIUM_COUNCIL_MODELS = [
     "openai/gpt-5.1",
     "anthropic/claude-sonnet-4.5",
     "x-ai/grok-4",
-    "google/gemini-3-pro-preview",
+    "google/gemini-3-pro-preview"
 ]
 
 FREE_COUNCIL_MODELS = [
-    "nvidia/nemotron-nano-12b-2-vl:free",
-    "mistralai/devstral-2-2512:free",
-    "google/gemini-2-0-flash-exp:free",
     "tngtech/deepseek-r1t2-chimera:free",
-    "amazon/nova-2-lite-v1:free",
+    "nvidia/nemotron-nano-12b-v2-vl:free",
+    "amazon/nova-2-lite-v1:free"
 ]
 
 
