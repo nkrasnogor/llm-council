@@ -2,7 +2,12 @@
 
 import httpx
 from typing import List, Dict, Any, Optional
-from .config import OPENROUTER_API_KEY, OPENROUTER_API_URL
+from .config import (
+    OPENROUTER_API_KEY,
+    OPENROUTER_API_URL,
+    OPENROUTER_HTTP_REFERER,
+    OPENROUTER_APP_TITLE,
+)
 
 
 async def query_model(
@@ -24,7 +29,8 @@ async def query_model(
     headers = {
         "Authorization": f"Bearer {OPENROUTER_API_KEY}",
         "Content-Type": "application/json",
-        "X-Title": "LLM Council"  # satisfies Referer/Title requirement
+        "HTTP-Referer": OPENROUTER_HTTP_REFERER,
+        "X-Title": OPENROUTER_APP_TITLE,
     }
 
     payload = {

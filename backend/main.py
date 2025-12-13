@@ -49,7 +49,11 @@ else:
         if httpx is not None and config.OPENROUTER_API_KEY:
             try:
                 models_url = "https://openrouter.ai/api/v1/models"
-                headers = {"Authorization": f"Bearer {config.OPENROUTER_API_KEY}"}
+                headers = {
+                    "Authorization": f"Bearer {config.OPENROUTER_API_KEY}",
+                    "HTTP-Referer": config.OPENROUTER_HTTP_REFERER,
+                    "X-Title": config.OPENROUTER_APP_TITLE,
+                }
                 resp = httpx.get(models_url, headers=headers, timeout=10.0)
                 resp.raise_for_status()
                 data = resp.json()

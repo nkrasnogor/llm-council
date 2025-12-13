@@ -9,6 +9,10 @@ load_dotenv()
 # OpenRouter API key
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 
+# OpenRouter attribution headers
+OPENROUTER_HTTP_REFERER = os.getenv("OPENROUTER_HTTP_REFERER", "http://localhost:5173/")
+OPENROUTER_APP_TITLE = os.getenv("OPENROUTER_APP_TITLE", "llm-council-nk")
+
 # Define model sets for premium and free councils
 PREMIUM_COUNCIL_MODELS = [
     "openai/gpt-5.1",
