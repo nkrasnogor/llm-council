@@ -30,21 +30,21 @@ from backend.config import (
     OPENROUTER_API_URL,
     OPENROUTER_HTTP_REFERER,
     OPENROUTER_APP_TITLE,
+    PREMIUM_COUNCIL_MODELS,
+    FREE_COUNCIL_MODELS,
+    DEFAULT_CHAIRMAN,
 )
 from backend.openrouter import query_model
 
 # --- Models to Test ---
-# Add any model identifiers you want to test here.
-# Using a free model for default testing.
-# Find more models at: https://openrouter.ai/models
-MODELS_TO_TEST = [
-    "tngtech/deepseek-r1t2-chimera:free",
-    # "nvidia/nemotron-nano-12b-v2-vl:free", # another option
-]
+# We collect all unique model names from the configuration to avoid duplication.
+MODELS_TO_TEST = sorted(list(
+    set(PREMIUM_COUNCIL_MODELS + FREE_COUNCIL_MODELS + [DEFAULT_CHAIRMAN])
+))
 
 # --- Test Messages ---
 TEST_MESSAGES = [
-    {"role": "user", "content": "What are the top 3 benefits of using Python for web development?"}
+    {"role": "user", "content": "What are the top 3 benefits of using Python for web development? Provide 3 very concise bullet points"}
 ]
 
 
