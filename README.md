@@ -65,6 +65,14 @@ COUNCIL_MODELS = [
 CHAIRMAN_MODEL = "google/gemini-3-pro-preview"
 ```
 
+#### Testing Your Models
+To ensure that your configured models are working correctly with your OpenRouter API key, you can run the provided test script. This will query each model in your `PREMIUM_COUNCIL_MODELS`, `FREE_COUNCIL_MODELS`, and your `DEFAULT_CHAIRMAN` to verify they are operational.
+
+Run the test from the project root:
+```bash
+uv run python -m backend.test_openrouter
+```
+
 ## Running the Application
 
 **Option 1: Use the start script**
